@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analyzer - Самое частое имя</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8ebff;
+            transform: scale(1.01);
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        #fileInput {
+            display: none;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            box-shadow: none;
+            margin-left: 10px;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .result-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            display: none;
+        }
+        .result-card.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .result-label {
+            font-size: 14px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .result-name {
+            font-size: 56px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .result-count {
+            font-size: 18px;
+            color: #666;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+        .stat-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .top-names {
+            margin-top: 25px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .top-names h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .name-list {
+            list-style: none;
+        }
+        .name-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .name-list li:last-child {
+            border-bottom: none;
+        }
+        .name-text {
+            font-weight: 500;
+        }
+        .name-bar {
+            width: 150px;
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            margin-left: 15px;
+        }
+        .name-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+        }
+        .file-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+            display: none;
+        }
+        .file-info.show {
+            display: block;
+        }
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Log Analyzer</h1>
+        <p class="subtitle">Загрузите лог-файл для поиска самого частого имени</p>
+        
+        <div class="upload-area" id="dropZone">
+            <div class="upload-icon">📁</div>
+            <p><strong>Выберите файл</strong> или перетащите его сюда</p>
+            <p style="color: #999; font-size: 14px; margin-top: 10px;">Поддерживаются .log, .txt файлы</p>
+        </div>
+        
+        <input type="file" id="fileInput" accept=".log,.txt,text/plain">
+        
+        <div class="action-buttons">
+            <button class="btn" id="analyzeBtn" disabled>🔍 Анализировать</button>
+            <button class="btn btn-secondary" id="resetBtn">🔄 Сбросить</button>
+        </div>
+
+        <div class="file-info" id="fileInfo"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Анализ файла...</p>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="result-card" id="resultCard">
+            <div class="result-label">Самое частое имя</div>
+            <div class="result-name" id="mostCommonName">—</div>
+            <div class="result-count" id="nameCount"></div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalLines">0</div>
+                    <div class="stat-label">Всего строк</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uniqueNames">0</div>
+                    <div class="stat-label">Уникальных имён</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="nameLines">0</div>
+                    <div class="stat-label">Строк с именами</div>
+                </div>
+            </div>
+            
+            <div class="top-names" id="topNamesSection" style="display: none;">
+                <h3>🏆 Топ-5 имён</h3>
+                <ul class="name-list" id="topNamesList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM элементы
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultCard = document.getElementById('resultCard');
+        const mostCommonName = document.getElementById('mostCommonName');
+        const nameCount = document.getElementById('nameCount');
+        const totalLines = document.getElementById('totalLines');
+        const uniqueNames = document.getElementById('uniqueNames');
+        const nameLines = document.getElementById('nameLines');
+        const topNamesSection = document.getElementById('topNamesSection');
+        const topNamesList = document.getElementById('topNamesList');
+
+        let selectedFile = null;
+
+        // Словарь распространённых имён (можно расширить)
+        const commonNames = new Set([
+            // Русские имена
+            'александр', 'алексей', 'андрей', 'анна', 'анастасия', 'антон', 'борис',
+            'валентин', 'валентина', 'валерий', 'василий', 'вера', 'виктор', 'виктория',
+            'владимир', 'владислав', 'галина', 'геннадий', 'георгий', 'григорий',
+            'дарья', 'денис', 'дмитрий', 'евгений', 'евгения', 'екатерина', 'елена',
+            'елизавета', 'жанна', 'зинаида', 'иван', 'игорь', 'илья', 'ирина',
+            'кирилл', 'константин', 'ксения', 'лариса', 'лев', 'леонид', 'любовь',
+            'людмила', 'максим', 'маргарита', 'марина', 'мария', 'михаил', 'надежда',
+            'настасья', 'наталья', 'никита', 'николай', 'оксана', 'олег', 'ольга',
+            'павел', 'петр', 'полина', 'роман', 'руслан', 'светлана', 'сергей',
+            'софия', 'станислав', 'тамара', 'татьяна', 'тимофей', 'федор', 'юлия', 'юрий',
+            'яков', 'яна', 'ярослав',
+            // Английские имена
+            'james', 'john', 'robert', 'michael', 'william', 'david', 'richard', 'joseph',
+            'thomas', 'charles', 'mary', 'patricia', 'jennifer', 'linda', 'elizabeth',
+            'barbara', 'susan', 'jessica', 'sarah', 'karen', 'lisa', 'nancy', 'betty',
+            'margaret', 'sandra', 'ashley', 'kimberly', 'emily', 'donna', 'michelle',
+            'dorothy', 'carol', 'amanda', 'melissa', 'deborah', 'stephanie', 'rebecca',
+            'sharon', 'laura', 'cynthia', 'kathleen', 'amy', 'angela', 'shirley',
+            'anna', 'brenda', 'pamela', 'emma', 'nicole', 'helen', 'samantha',
+            // Европейские имена
+            'jean', 'pierre', 'michel', 'andre', 'philippe', 'jacques', 'marie',
+            'hans', 'peter', 'wolfgang', 'klaus', 'ursula', 'monika', 'giuseppe',
+            'giovanni', 'antonio', 'mario', 'luigi', 'francesco', 'franco', 'paolo',
+            'carlos', 'jose', 'juan', 'manuel', 'francisco', 'javier', 'antonio',
+            'maria', 'carmen', 'ana', 'isabel', 'laura', 'lucia', 'elena'
+        ]);
+
+        // Функция для извлечения имён из строки
+        function extractNamesFromLine(line) {
+            const foundNames = [];
+            
+            // Разбиваем строку на слова
+            const words = line.split(/[\s,.;:!?()\[\]{}"'\-\u2014\u2013]+/);
+            
+            for (const word of words) {
+                if (word.length < 2) continue;
+                
+                const lowerWord = word.toLowerCase();
+                
+                // Проверяем, есть ли слово в словаре имён
+                if (commonNames.has(lowerWord)) {
+                    // Возвращаем имя с правильной капитализацией (первая буква заглавная)
+                    const properName = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                    foundNames.push(properName);
+                }
+                
+                // Дополнительная проверка: слово начинается с заглавной буквы и состоит из букв
+                // Это помогает найти имена, которых нет в словаре
+                if (/^[A-ZА-ЯЁ][a-zа-яё]{2,}$/.test(word) && !commonNames.has(lowerWord)) {
+                    foundNames.push(word);
+                }
+            }
+            
+            return foundNames;
+        }
+
+        // Функция анализа файла
+        async function analyzeFile(file) {
+            const text = await file.text();
+            const lines = text.split('\n');
+            
+            const nameFrequency = new Map();
+            let totalLineCount = lines.length;
+            let linesWithNames = 0;
+            
+            for (const line of lines) {
+                const names = extractNamesFromLine(line);
+                if (names.length > 0) {
+                    linesWithNames++;
+                    for (const name of names) {
+                        nameFrequency.set(name, (nameFrequency.get(name) || 0) + 1);
+                    }
+                }
+            }
+            
+            // Сортируем имена по частоте
+            const sortedNames = Array.from(nameFrequency.entries())
+                .sort((a, b) => b[1] - a[1]);
+            
+            return {
+                totalLines: totalLineCount,
+                linesWithNames,
+                uniqueNamesCount: nameFrequency.size,
+                sortedNames,
+                mostCommon: sortedNames.length > 0 ? sortedNames[0] : null
+            };
+        }
+
+        // Функция отображения результатов
+        function displayResults(results) {
+            totalLines.textContent = results.totalLines;
+            uniqueNames.textContent = results.uniqueNamesCount;
+            nameLines.textContent = results.linesWithNames;
+            
+            if (results.mostCommon) {
+                mostCommonName.textContent = results.mostCommon[0];
+                nameCount.textContent = `Встречается ${results.mostCommon[1]} ${getWordForm(results.mostCommon[1], 'раз', 'раза', 'раз')}`;
+                
+                // Показываем топ-5 имён
+                const top5 = results.sortedNames.slice(0, 5);
+                if (top5.length > 0) {
+                    topNamesSection.style.display = 'block';
+                    topNamesList.innerHTML = '';
+                    
+                    const maxCount = top5[0][1];
+                    
+                    top5.forEach(([name, count]) => {
+                        const li = document.createElement('li');
+                        const percentage = (count / maxCount) * 100;
+                        
+                        li.innerHTML = `
+                            <div style="display: flex; align-items: center; flex: 1;">
+                                <span class="name-text">${name}</span>
+                                <div class="name-bar">
+                                    <div class="name-bar-fill" style="width: ${percentage}%;"></div>
+                                </div>
+                            </div>
+                            <span style="font-weight: bold; color: #667eea;">${count}</span>
+                        `;
+                        topNamesList.appendChild(li);
+                    });
+                } else {
+                    topNamesSection.style.display = 'none';
+                }
+            } else {
+                mostCommonName.textContent = 'Не найдено';
+                nameCount.textContent = 'В файле не обнаружено имён';
+                topNamesSection.style.display = 'none';
+            }
+            
+            resultCard.classList.add('show');
+        }
+
+        // Вспомогательная функция для склонения слов
+        function getWordForm(number, one, two, five) {
+            let n = Math.abs(number);
+            n %= 100;
+            if (n >= 5 && n <= 20) return five;
+            n %= 10;
+            if (n === 1) return one;
+            if (n >= 2 && n <= 4) return two;
+            return five;
+        }
+
+        // Обработчик выбора файла
+        function handleFileSelect(file) {
+            if (file) {
+                selectedFile = file;
+                const fileSize = (file.size / 1024).toFixed(2);
+                fileInfo.innerHTML = `
+                    <strong>📄 ${file.name}</strong><br>
+                    Размер: ${fileSize} KB
+                `;
+                fileInfo.classList.add('show');
+                analyzeBtn.disabled = false;
+                errorMessage.style.display = 'none';
+                resultCard.classList.remove('show');
+            }
+        }
+
+        // Обработчик анализа
+        async function handleAnalyze() {
+            if (!selectedFile) return;
+            
+            loading.classList.add('show');
+            errorMessage.style.display = 'none';
+            resultCard.classList.remove('show');
+            analyzeBtn.disabled = true;
+            
+            try {
+                const results = await analyzeFile(selectedFile);
+                displayResults(results);
+            } catch (err) {
+                errorMessage.textContent = '❌ Ошибка при анализе файла: ' + err.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                loading.classList.remove('show');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        // Сброс
+        function handleReset() {
+            selectedFile = null;
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            fileInfo.innerHTML = '';
+            analyzeBtn.disabled = true;
+            errorMessage.style.display = 'none';
+            resultCard.classList.remove('show');
+            loading.classList.remove('show');
+        }
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        analyzeBtn.addEventListener('click', handleAnalyze);
+        resetBtn.addEventListener('click', handleReset);
+    </script>
+</body>
+</html>
